@@ -1,0 +1,22 @@
+{
+  "salt": "NmF9R6mwyEXnV/qFEuIAbQ==",
+  "iter": 250000,
+  "videos": [
+    {
+      "id": "v01",
+      "title": "What We Got（9/15撮影）",
+      "date": "2026-09-15",
+      "iv": "V2rdaCUXtL8bo5pj",
+      "size": 40753187,
+      "parts": [
+        "data/v01.0.bin",
+        "data/v01.1.bin",
+        "data/v01.2.bin"
+      ]
+    }
+  ],
+  "check": {
+    "iv": "bjEFdC+O/2DIl6tH",
+    "data": "kV/nulBQ9a2J3KatnUsBx9aOuhLqbn1U"
+  }
+}

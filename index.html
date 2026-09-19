@@ -4,31 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>ダンス見本動画</title>
+<title>運動会 見本動画・音源</title>
 <style>
   :root { --bg:#f6f3ec; --card:#fff; --ink:#2b2a28; --sub:#7a756c; --accent:#e0703a; --line:#e6e0d4; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:"Hiragino Maru Gothic ProN","Hiragino Sans",system-ui,sans-serif; padding:24px 16px 48px; }
   main { max-width:880px; margin:0 auto; }
   h1 { font-size:1.5rem; margin:0 0 4px; }
+  h2 { font-size:1.05rem; margin:0 0 10px; }
   .lead { color:var(--sub); margin:0 0 20px; font-size:.9rem; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; }
-  #lock form { display:flex; gap:8px; flex-wrap:wrap; }
-  input[type=password] { flex:1 1 220px; font-size:1rem; padding:12px 14px; border:1px solid var(--line); border-radius:10px; }
-  button { font:inherit; font-size:.95rem; padding:10px 16px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer; }
-  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:bold; }
+  section + section { margin-top:24px; }
+  button, a.btn { font:inherit; font-size:.95rem; padding:10px 16px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer; color:inherit; text-decoration:none; display:inline-block; }
   button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
-  .remember { display:block; margin-top:10px; font-size:.85rem; color:var(--sub); }
-  .err { color:#c0392b; margin:10px 0 0; min-height:1.2em; font-size:.9rem; }
+  audio { width:100%; margin-top:4px; }
+  .meta { color:var(--sub); font-size:.85rem; margin:0 0 8px; }
   .list { display:grid; gap:10px; margin-bottom:16px; }
-  .item { text-align:left; padding:14px 16px; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+  .item { text-align:left; padding:14px 16px; display:flex; justify-content:space-between; gap:12px; align-items:center; width:100%; }
   .item small { color:var(--sub); }
   .item.active { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent) inset; }
   .stage { background:#000; border-radius:12px; overflow:hidden; aspect-ratio:16/9; display:grid; place-items:center; color:#ddd; }
   video { width:100%; height:100%; display:block; background:#000; }
   video.flip { transform:scaleX(-1); }
-  .bar { height:6px; width:min(320px,80%); background:#333; border-radius:3px; overflow:hidden; margin-top:10px; }
-  .bar > i { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
   .tools { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:12px; }
   .tools .label { color:var(--sub); font-size:.85rem; margin-right:2px; }
   .sep { flex-basis:100%; height:0; }
@@ -37,19 +34,16 @@
 </head>
 <body>
 <main>
-  <h1>🎵 ダンス見本動画</h1>
-  <p class="lead">教職員向け・持ち出し厳禁。合言葉を入れると再生できます。</p>
+  <h1>🎵 運動会 見本動画・音源</h1>
+  <p class="lead">教職員向け・持ち出し厳禁。練習用に自由に再生してください。</p>
 
-  <section id="lock" class="card">
-    <form id="f">
-      <input id="pw" type="password" placeholder="合言葉" autocomplete="current-password" required>
-      <button class="primary">ひらく</button>
-    </form>
-    <label class="remember"><input type="checkbox" id="rem"> この端末で合言葉を覚える</label>
-    <p class="err" id="err"></p>
+  <section id="audioSec" class="card">
+    <h2>🎶 音源</h2>
+    <div id="audioList"></div>
   </section>
 
-  <section id="app" hidden>
+  <section id="videoSec">
+    <h2>💃 ダンス見本動画</h2>
     <div class="list" id="list"></div>
     <div class="stage" id="stage"><span>動画をえらんでください</span></div>
     <div class="tools">
@@ -60,39 +54,45 @@
       <button data-rate="0.5">0.5倍</button>
       <button data-rate="0.75">0.75倍</button>
       <button data-rate="1" class="on">ふつう</button>
-      <span class="sep"></span>
-      <button id="logout">合言葉を消す</button>
     </div>
-    <p class="note">※ 動画は暗号化して置いています。URLだけでは中身は見られません。</p>
+    <p class="note">※ 子どもが映っています。ダウンロードや転送はしないでください。</p>
   </section>
 </main>
 
 <script>
 const $ = id => document.getElementById(id);
-const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-const store = { get(){ try { return localStorage.getItem('mihon-pw'); } catch(e){ return null; } },
-                set(v){ try { localStorage.setItem('mihon-pw', v); } catch(e){} },
-                del(){ try { localStorage.removeItem('mihon-pw'); } catch(e){} } };
-let meta, key, video, cur, flipped = false, rate = 1;
+let meta, video, cur, flipped = false, rate = 1;
 
-async function deriveKey(pw) {
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name:'PBKDF2', hash:'SHA-256', salt:b64(meta.salt), iterations:meta.iter },
-    base, { name:'AES-GCM', length:256 }, false, ['decrypt']);
-}
-
-async function unlock(pw, remember) {
-  $('err').textContent = '確認中…';
-  meta = meta || await (await fetch('videos.json', { cache:'no-cache' })).json();
-  const k = await deriveKey(pw);
-  try {
-    await crypto.subtle.decrypt({ name:'AES-GCM', iv:b64(meta.check.iv) }, k, b64(meta.check.data));
-  } catch (e) { $('err').textContent = '合言葉がちがいます'; store.del(); return; }
-  key = k;
-  if (remember) store.set(pw);
-  $('lock').hidden = true; $('app').hidden = false;
-  renderList();
-  if (meta.videos.length === 1) play(meta.videos[0]);
+function renderAudios() {
+  const wrap = $('audioList');
+  wrap.innerHTML = '';
+  if (!meta.audios || !meta.audios.length) { $('audioSec').hidden = true; return; }
+  meta.audios.forEach(a => {
+    const box = document.createElement('div');
+    box.innerHTML = `<p class="meta">${a.title} <span>（${a.date}）</span></p>`;
+    const au = document.createElement('audio');
+    au.controls = true; au.preload = 'metadata'; au.src = a.src;
+    box.appendChild(au);
+    const tools = document.createElement('div');
+    tools.className = 'tools';
+    tools.innerHTML = '<span class="label">速さ</span>';
+    [0.5, 0.75, 1].forEach(r => {
+      const b = document.createElement('button');
+      b.textContent = r === 1 ? 'ふつう' : r + '倍';
+      if (r === 1) b.classList.add('on');
+      b.onclick = () => {
+        au.playbackRate = r;
+        tools.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      };
+      tools.appendChild(b);
+    });
+    const dl = document.createElement('a');
+    dl.className = 'btn'; dl.href = a.src; dl.download = ''; dl.textContent = '⬇ ダウンロード';
+    tools.appendChild(document.createElement('span')).className = 'sep';
+    tools.appendChild(dl);
+    box.appendChild(tools);
+    wrap.appendChild(box);
+  });
 }
 
 function renderList() {
@@ -106,50 +106,36 @@ function renderList() {
   });
 }
 
-async function play(v) {
+function play(v) {
   if (cur === v.id) return;
   cur = v.id; renderList();
-  if (video) { URL.revokeObjectURL(video.src); }
-  $('stage').innerHTML = '<div style="text-align:center">読みこみ中… <span id="pct">0</span>%<div class="bar"><i id="bi"></i></div></div>';
-  const buf = new Uint8Array(v.size); let got = 0;
-  for (const p of v.parts) {
-    const res = await fetch(p);
-    const reader = res.body.getReader();
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf.set(value, got); got += value.length;
-      const pct = Math.floor(got / v.size * 100);
-      if ($('pct')) { $('pct').textContent = pct; $('bi').style.width = pct + '%'; }
-    }
-  }
-  if (cur !== v.id) return;
-  const plain = await crypto.subtle.decrypt({ name:'AES-GCM', iv:b64(v.iv) }, key, buf);
   video = document.createElement('video');
-  video.controls = true; video.playsInline = true;
+  video.controls = true; video.playsInline = true; video.preload = 'metadata';
   video.setAttribute('controlsList', 'nodownload');
   video.oncontextmenu = e => e.preventDefault();
-  video.src = URL.createObjectURL(new Blob([plain], { type:'video/mp4' }));
+  video.src = v.src;
   video.playbackRate = rate;
   video.classList.toggle('flip', flipped);
   $('stage').innerHTML = ''; $('stage').appendChild(video);
 }
 
-$('f').onsubmit = e => { e.preventDefault(); unlock($('pw').value, $('rem').checked); };
 $('flipBtn').onclick = () => {
   flipped = !flipped;
   $('flipBtn').textContent = flipped ? '元の向き（撮影したまま）' : '反転ずみ（向かい合わせ用）';
   if (video) video.classList.toggle('flip', flipped);
 };
-document.querySelectorAll('[data-rate]').forEach(b => b.onclick = () => {
+document.querySelectorAll('#videoSec [data-rate]').forEach(b => b.onclick = () => {
   rate = +b.dataset.rate;
-  document.querySelectorAll('[data-rate]').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('#videoSec [data-rate]').forEach(x => x.classList.toggle('on', x === b));
   if (video) video.playbackRate = rate;
 });
-$('logout').onclick = () => { store.del(); location.reload(); };
 
-const saved = store.get();
-if (saved) unlock(saved, true);
+(async () => {
+  meta = await (await fetch('videos.json', { cache:'no-cache' })).json();
+  renderAudios();
+  renderList();
+  if (meta.videos.length === 1) play(meta.videos[0]);
+})();
 </script>
 </body>
 </html>

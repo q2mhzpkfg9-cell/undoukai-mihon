@@ -110,7 +110,7 @@ function renderAudios() {
 
 function renderList() {
   $('list').innerHTML = '';
-  meta.videos.slice().reverse().forEach(v => {
+  meta.videos.forEach(v => {
     const b = document.createElement('button');
     b.className = 'item' + (cur === v.id ? ' active' : '');
     b.innerHTML = `<span>${v.title}</span><small>${v.date}</small>`;

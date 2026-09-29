@@ -27,16 +27,16 @@
   ],
   "videos": [
     {
-      "id": "v01",
-      "title": "What We Got（9/15撮影）",
-      "date": "2026-09-15",
-      "src": "media/v01.mp4"
-    },
-    {
       "id": "v02",
       "title": "入場　Carrying Happiness",
       "date": "2026-09-25",
       "src": "media/v02.mp4"
+    },
+    {
+      "id": "v01",
+      "title": "What We Got",
+      "date": "2026-09-15",
+      "src": "media/v01.mp4"
     },
     {
       "id": "v03",

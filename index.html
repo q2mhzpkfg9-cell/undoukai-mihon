@@ -73,6 +73,19 @@ function renderAudios() {
     const au = document.createElement('audio');
     au.controls = true; au.preload = 'metadata'; au.src = a.src;
     box.appendChild(au);
+    if (a.marks && a.marks.length) {
+      const jump = document.createElement('div');
+      jump.className = 'tools';
+      jump.innerHTML = '<span class="label">ここから</span>';
+      a.marks.forEach(mk => {
+        const b = document.createElement('button');
+        const mm = Math.floor(mk.t / 60), ss = String(Math.floor(mk.t % 60)).padStart(2, '0');
+        b.innerHTML = `${mk.label} <small style="opacity:.6">${mm}:${ss}</small>`;
+        b.onclick = () => { au.currentTime = mk.t; au.play(); };
+        jump.appendChild(b);
+      });
+      box.appendChild(jump);
+    }
     const tools = document.createElement('div');
     tools.className = 'tools';
     tools.innerHTML = '<span class="label">速さ</span>';

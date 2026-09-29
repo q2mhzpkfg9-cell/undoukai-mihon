@@ -4,7 +4,25 @@
       "id": "a01",
       "title": "運動会音源（2年）",
       "date": "2026-09-19",
-      "src": "media/ongen-2nen.m4a"
+      "src": "media/ongen-2nen.m4a",
+      "marks": [
+        {
+          "t": 0,
+          "label": "① 入場 Carrying Happiness"
+        },
+        {
+          "t": 75.8,
+          "label": "② What We Got"
+        },
+        {
+          "t": 263.2,
+          "label": "③ 明日の私に幸あれ"
+        },
+        {
+          "t": 485.9,
+          "label": "④ 4曲目"
+        }
+      ]
     }
   ],
   "videos": [

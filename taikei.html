@@ -176,21 +176,7 @@ function f4() {
   });
   return { P, guides: G, labels: [...classLabels(), ...combos.map(([, [x, y], , t]) => [x + 42, y + 5, t])] };
 }
-function f5() {
-  const P = [], G = [];
-  for (let c = 0; c < 3; c++) for (const col of ['r', 'b']) {
-    for (let g = 0; g < 4; g++) {
-      const gx = CX[c] + (col === 'r' ? -24 : 24), gy = BLOCK_Y[c][g] - 14;
-      group(c, col, g).forEach((k, j) => {
-        const a = Math.PI / 4 + j * Math.PI / 2;
-        P[k.id] = [gx + 11 * Math.cos(a), gy + 11 * Math.sin(a)];
-      });
-      G.push(['circle', { cx: gx, cy: gy, r: 20, col }]);
-    }
-    last(c, col).forEach((k, j) => P[k.id] = [xOf(c, col, j), LAST_Y[c]]);
-  }
-  return { P, guides: G, labels: classLabels() };
-}
+function f5() { return f2(); }   // ⑤は②と同じ4列
 // ⑥⑦：前後の並びはそのまま（前＝低い子、後ろ＝高い子）。2組はうしろに寄るだけ
 const C6 = [[255, 425], [495, 195], [735, 425]];
 const order = {};   // 0=いちばん前（低）… 17=いちばんうしろ（高）
@@ -240,7 +226,7 @@ const SCENES = [
   { no: '②', title: '3つに分かれる', desc: '3クラスをストレートの間に均等に。先頭はリレーコースの線上。前から4人組が4ブロック、5ブロック目が最後尾。', f: f2 },
   { no: '③', title: '4人ずつの縦列', desc: '赤4人・青4人の縦列。後ろの4人は4人で1列（1組は青の後ろ、2組・3組は赤の後ろ）になり、バックストレートにかぶさるくらいまで下がります。', f: f3 },
   { no: '④', title: '横どうしの赤と青で円', desc: '赤に寄るように円をつくります。5ブロック目は合同の円（1+2 ／ 3+2）。', f: f4 },
-  { no: '⑤', title: '4人組の小さな輪', desc: '4人組ごとの輪。5ブロック目は最後尾にもどります。', f: f5 },
+  { no: '⑤', title: '②と同じ4列にもどる', desc: '先頭はリレーコースの線上。前から4人組が4ブロック、最後尾に4人。', f: f5 },
   { no: '⑥', title: '大きな円の中に2列', desc: '前後の並びはそのまま（前が低い子・うしろが高い子）。2組はうしろに寄るだけ。', f: f6 },
   { no: '⑦', title: '赤は左の半円、青は右の半円', desc: '2列がひらいて、1つの円になります。', f: f7 },
   { no: '退場', title: '退場（背の高い子を先頭に）', desc: '円の状態から、高い子から順に出ていきます。', f: fExit },

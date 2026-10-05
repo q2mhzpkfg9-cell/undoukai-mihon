@@ -97,10 +97,21 @@ for (let c = 0; c < 3; c++) for (const col of ['r', 'b']) for (let i = 0; i < 18
   kids.push({ id: kids.length, c, col, i });
 const pick = (c, col) => kids.filter(k => k.c === c && k.col === col);
 
-const CX = [265, 467, 688];          // 5・6G / 3・4G / 1・2G のライン
 const ring = (cx, cy, r, n, a0 = -Math.PI / 2) =>
   Array.from({ length: n }, (_, j) => [cx + r * Math.cos(a0 + 2 * Math.PI * j / n), cy + r * Math.sin(a0 + 2 * Math.PI * j / n)]);
 const ringR = n => Math.max(14, n * 2.4);
+
+// ---- 並び方の基本 ----
+// ②〜⑤は3クラスをストレートの間に均等に並べる
+// 前（下）がリレーコースの線上。前から 4人組×4ブロック、5ブロック目（赤2・青2）が最後尾
+const CX = [340, 495, 650];
+const BLOCK_Y = [0, 1, 2].map(() => [503, 413, 323, 233]);  // 各ブロックの先頭の行
+const LAST_Y = [150, 150, 150];        // 5ブロック目（②⑤）
+const group = (c, col, g) => pick(c, col).slice(g * 4, g * 4 + 4);   // g=0 が先頭
+const last = (c, col) => pick(c, col).slice(16, 18);
+const XR = [-33, -11], XB = [11, 33];
+const xOf = (c, col, j) => CX[c] + (col === 'r' ? XR : XB)[j];
+const classLabels = () => CX.map((x, c) => [x - 62, BLOCK_Y[c][0] + 5, c + 1]);
 
 // ---- 隊形 ----
 function fStart() {
@@ -109,104 +120,130 @@ function fStart() {
   return { P, guides: [] };
 }
 function f1() {
-  // 次の隊形②で行く方向に合わせて輪の場所を決める（線が交差しにくい）
-  const P = [], cx = 480, cy = 255, rx = 290, ry = 150, next = f2().P;
+  // 次の②で行く方向に合わせて輪の場所を決める（線が交差しにくい）
+  const P = [], cx = 495, cy = 305, rx = 375, ry = 178, next = f2().P;
   const ang = k => Math.atan2((next[k.id][1] - cy) / ry, (next[k.id][0] - cx) / rx);
   [...kids].sort((a, b) => ang(a) - ang(b)).forEach((k, j) => {
     const a = -Math.PI + 2 * Math.PI * (j + .5) / kids.length;
-    P[k.id] = [cx + rx * Math.cos(a), cy + 50 + ry * Math.sin(a)];
+    P[k.id] = [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
   });
-  return { P, guides: [['ellipse', { cx, cy: cy + 50, rx: rx + 14, ry: ry + 14 }]], labels: [] };
+  return { P, guides: [['ellipse', { cx, cy, rx: rx + 12, ry: ry + 12 }]], labels: [] };
 }
 function f2() {
-  const P = [], off = [-27, -9, 9, 27];
-  for (let c = 0; c < 3; c++) for (const col of ['r', 'b']) pick(c, col).forEach((k, i) => {
-    const base = col === 'r' ? 0 : 2;
-    if (i < 2) P[k.id] = [CX[c] + off[base + i], 170];
-    else { const m = i - 2; P[k.id] = [CX[c] + off[base + m % 2], 192 + Math.floor(m / 2) * 20]; }
-  });
-  return { P, guides: [], labels: CX.map((x, c) => [x, 145, c + 1]) };
-}
-function f3() {
-  const P = [], G = [], rc = [5, 4, 5, 4], bc = [4, 5, 4, 5];
-  for (let c = 0; c < 3; c++) {
-    const ox = o => CX[c] + (o % 2 ? 14 : -14), oy = o => 190 + o * 52;
-    for (const [col, cnt, dx] of [['r', rc, -18], ['b', bc, 18]]) {
-      let i = 0; const list = pick(c, col);
-      cnt.forEach((n, o) => { for (let j = 0; j < n; j++) P[list[i++].id] = [ox(o) + dx, oy(o) + (j - (n - 1) / 2) * 9]; });
-    }
-    for (let o = 0; o < 4; o++) G.push(['ellipse', { cx: ox(o), cy: oy(o), rx: 40, ry: 27 }]);
+  const P = [];
+  for (let c = 0; c < 3; c++) for (const col of ['r', 'b']) {
+    for (let g = 0; g < 4; g++) group(c, col, g).forEach((k, j) => P[k.id] = [xOf(c, col, j % 2), BLOCK_Y[c][g] - Math.floor(j / 2) * 24]);
+    last(c, col).forEach((k, j) => P[k.id] = [xOf(c, col, j), LAST_Y[c]]);
   }
-  return { P, guides: G, labels: CX.map((x, c) => [x, 145, c + 1]) };
+  return { P, guides: [], labels: classLabels() };
+}
+const ovalX = (c, g) => CX[c] + (g % 2 ? 16 : -16);
+const ovalY = (c, g) => BLOCK_Y[c][g] - 16;
+function f3() {
+  const P = [], G = [];
+  for (let c = 0; c < 3; c++) {
+    for (let g = 0; g < 4; g++) {
+      for (const [col, dx] of [['r', -13], ['b', 13]])
+        group(c, col, g).forEach((k, j) => P[k.id] = [ovalX(c, g) + dx, ovalY(c, g) + 16 - j * 11]);
+      G.push(['ellipse', { cx: ovalX(c, g), cy: ovalY(c, g), rx: 36, ry: 30 }]);
+    }
+    // 後ろの4人で1列。1組は青の後ろ、2組・3組は赤の後ろ。バックストレートにかぶさるくらいまで下がる
+    const lx = ovalX(c, 3) + (c === 0 ? 13 : -13);
+    [...last(c, 'r'), ...last(c, 'b')].forEach((k, j) => P[k.id] = [lx, 141 - j * 11]);
+  }
+  return { P, guides: G, labels: classLabels() };
 }
 function f4() {
-  const P = [], G = [];
-  const colX = [[237, 307], [420, 477], [615, 700]], rY = [250, 362], bY = [306, 420];
-  const topB = [320, 190], topR = [612, 190];
-  const plan = { // [輪1, 輪2, 合同の輪へ]
-    '0r': [9, 9, 0], '1r': [7, 7, 4], '2r': [7, 7, 4],
-    '0b': [7, 7, 4], '1b': [7, 7, 4], '2b': [9, 9, 0] };
-  const toTop = { r: [], b: [] };
-  for (let c = 0; c < 3; c++) for (const col of ['r', 'b']) {
-    const list = pick(c, col), [n1, n2] = plan[c + col];
-    const x = colX[c][col === 'r' ? 0 : 1], ys = col === 'r' ? rY : bY;
-    [[n1, ys[0]], [n2, ys[1]]].reduce((s, [n, y]) => {
-      ring(x, y, ringR(n), n).forEach((p, j) => P[list[s + j].id] = p);
-      G.push(['circle', { cx: x, cy: y, r: ringR(n) + 9, col }]);
-      return s + n;
-    }, 0);
-    list.slice(n1 + n2).forEach(k => toTop[col].push(k));
+  // 横どうしの赤4人・青4人で1つの円。円は赤の側に寄せる
+  const P = [], G = [], R = ringR(8) + 4;
+  for (let c = 0; c < 3; c++) for (let g = 0; g < 4; g++) {
+    const cx = ovalX(c, g) - 10, cy = ovalY(c, g);
+    const l = [...group(c, 'r', g), ...group(c, 'b', g)];
+    // 赤は左半分、青は右半分
+    l.forEach((k, j) => {
+      const a = k.col === 'r' ? Math.PI * (0.62 + 0.25 * (j % 4)) : Math.PI * (-0.38 + 0.25 * (j % 4));
+      P[k.id] = [cx + R * Math.cos(a), cy + R * Math.sin(a)];
+    });
+    G.push(['circle', { cx, cy, r: R + 9, col: 'r' }]);
   }
-  [['b', topB], ['r', topR]].forEach(([col, [x, y]]) => {
-    const l = toTop[col];
+  // 5ブロック目：1組＋2組の青2人／3組＋2組の赤2人で合同の円
+  const combos = [
+    ['b', [418, 150], [...last(0, 'r'), ...last(0, 'b'), ...last(1, 'b')], '1+2'],
+    ['r', [650, 150], [...last(2, 'r'), ...last(2, 'b'), ...last(1, 'r')], '3+2']];
+  combos.forEach(([col, [x, y], l]) => {
     ring(x, y, ringR(l.length), l.length).forEach((p, j) => P[l[j].id] = p);
     G.push(['circle', { cx: x, cy: y, r: ringR(l.length) + 9, col }]);
   });
-  return { P, guides: G, labels: [[topB[0], 150, '1+2'], [topR[0], 150, '3+2']] };
+  return { P, guides: G, labels: [...classLabels(), ...combos.map(([, [x, y], , t]) => [x + 42, y + 5, t])] };
 }
 function f5() {
   const P = [], G = [];
   for (let c = 0; c < 3; c++) for (const col of ['r', 'b']) {
-    const sx = col === 'r' ? -1 : 1;
-    pick(c, col).forEach((k, i) => {
-      if (i < 2) { P[k.id] = [CX[c] + sx * (i ? 9 : 27), 166]; return; }
-      const m = i - 2, g = Math.floor(m / 4), gx = CX[c] + sx * 22, gy = 200 + g * 42;
-      const a = Math.PI / 4 + (m % 4) * Math.PI / 2;
-      P[k.id] = [gx + 10 * Math.cos(a), gy + 10 * Math.sin(a)];
-      if (m % 4 === 0) G.push(['circle', { cx: gx, cy: gy, r: 19, col }]);
-    });
+    for (let g = 0; g < 4; g++) {
+      const gx = CX[c] + (col === 'r' ? -24 : 24), gy = BLOCK_Y[c][g] - 14;
+      group(c, col, g).forEach((k, j) => {
+        const a = Math.PI / 4 + j * Math.PI / 2;
+        P[k.id] = [gx + 11 * Math.cos(a), gy + 11 * Math.sin(a)];
+      });
+      G.push(['circle', { cx: gx, cy: gy, r: 20, col }]);
+    }
+    last(c, col).forEach((k, j) => P[k.id] = [xOf(c, col, j), LAST_Y[c]]);
   }
-  return { P, guides: G, labels: CX.map((x, c) => [x, 145, c + 1]) };
+  return { P, guides: G, labels: classLabels() };
 }
-const C6 = [[260, 430], [467, 178], [695, 450]];
+// ⑥⑦：前後の並びはそのまま（前＝低い子、後ろ＝高い子）。2組はうしろに寄るだけ
+const C6 = [[255, 425], [495, 195], [735, 425]];
+const order = {};   // 0=いちばん前（低）… 17=いちばんうしろ（高）
+(() => {
+  const P = f2().P;
+  for (let c = 0; c < 3; c++) for (const col of ['r', 'b'])
+    [...pick(c, col)].sort((a, b) => P[b.id][1] - P[a.id][1] || P[a.id][0] - P[b.id][0]).forEach((k, i) => order[k.id] = i);
+})();
+function bigCircleGuides(G) {
+  C6.forEach(([cx, cy]) => {
+    G.push(['circle', { cx, cy, r: 92 }]);
+    G.push(['text', { x: cx + 26, y: cy - 78, t: '高' }]);
+    G.push(['text', { x: cx + 26, y: cy + 90, t: '低' }]);
+  });
+}
 function f6() {
   const P = [], G = [];
-  for (let c = 0; c < 3; c++) {
-    const [cx, cy] = C6[c];
-    for (const col of ['r', 'b']) pick(c, col).forEach((k, i) => P[k.id] = [cx + (col === 'r' ? -12 : 12), cy - 72 + i * 8.5]);
-    G.push(['circle', { cx, cy, r: 88 }]);
-    G.push(['text', { x: cx + 30, y: cy - 66, t: '高' }]);
-    G.push(['text', { x: cx + 30, y: cy + 80, t: '低' }]);
-  }
-  return { P, guides: G, labels: C6.map(([x, y], c) => [x - 52, y + 6, c + 1]) };
+  kids.forEach(k => { const [cx, cy] = C6[k.c]; P[k.id] = [cx + (k.col === 'r' ? -12 : 12), cy + 72 - order[k.id] * 8.5]; });
+  bigCircleGuides(G);
+  return { P, guides: G, labels: C6.map(([x, y], c) => [x - 60, y + 6, c + 1]) };
+}
+function f7() {
+  const P = [], G = [];
+  kids.forEach(k => {
+    const [cx, cy] = C6[k.c], t = order[k.id] / 17;
+    const a = Math.PI / 2 + (k.col === 'r' ? 1 : -1) * Math.PI * (0.04 + 0.92 * t);
+    P[k.id] = [cx + 80 * Math.cos(a), cy + 80 * Math.sin(a)];
+  });
+  bigCircleGuides(G);
+  return { P, guides: G, labels: C6.map(([x, y], c) => [x, y + 6, c + 1]) };
 }
 function fExit() {
+  // 円のまま、背の高い子（うしろ）を先頭に。1組と2組の赤は左、3組と2組の青は右
   const P = [], delay = [];
   const L = [pick(0, 'r'), pick(0, 'b'), pick(1, 'r')], R = [pick(2, 'r'), pick(2, 'b'), pick(1, 'b')];
-  L.forEach((row, r) => row.forEach((k, j) => { P[k.id] = [175 - (17 - j) * 11, -36 + r * 13]; delay[k.id] = j / 18; }));
-  R.forEach((row, r) => row.forEach((k, j) => { P[k.id] = [795 + (17 - j) * 11, -36 + r * 13]; delay[k.id] = j / 18; }));
+  [[L, x => 175 - x], [R, x => 795 + x]].forEach(([rows, fx]) => rows.forEach((row, r) => row.forEach(k => {
+    const o = order[k.id];
+    P[k.id] = [fx(o * 11), -36 + r * 13];
+    delay[k.id] = (17 - o) / 18;
+  })));
   return { P, guides: [], labels: [], delay };
 }
 
 const SCENES = [
   { no: '入場前', title: '入場門にならぶ', desc: '入場門（左上）の外で待ちます。', f: fStart },
-  { no: '①', title: '入場（Carrying Happiness）→ 大きな輪', desc: '入場して、トラックの内側いっぱいに大きな輪になります。', f: f1, stagger: true },
-  { no: '②', title: '3つに分かれて4列', desc: '1・2・3に分かれ、左2列が赤・右2列が青。', f: f2 },
-  { no: '③', title: '赤と青の2列で小さな輪×4', desc: 'それぞれ4つの輪。輪は左右に少しずつずらします。', f: f3 },
-  { no: '④', title: '赤・青の輪をたがいちがいに', desc: '上の2つは合同の輪（1+2 ／ 3+2）。', f: f4 },
-  { no: '⑤', title: '4人ずつの小さな輪', desc: '赤の輪が左、青の輪が右に4つずつならびます。', f: f5 },
-  { no: '⑥', title: '大きな円が3つ', desc: '円の中に赤・青の2列。高い子が上（入場門側）。', f: f6 },
-  { no: '退場', title: '退場（高い子を先頭に）', desc: '1と2の赤は左へ、3と2の青は右へ出ます。', f: fExit },
+  { no: '①', title: '入場（Carrying Happiness）→ 大きな輪', desc: 'リレーコースの内側いっぱいに大きな輪になります。', f: f1, stagger: true },
+  { no: '②', title: '3つに分かれる', desc: '3クラスをストレートの間に均等に。先頭はリレーコースの線上。前から4人組が4ブロック、5ブロック目が最後尾。', f: f2 },
+  { no: '③', title: '4人ずつの縦列', desc: '赤4人・青4人の縦列。後ろの4人は4人で1列（1組は青の後ろ、2組・3組は赤の後ろ）になり、バックストレートにかぶさるくらいまで下がります。', f: f3 },
+  { no: '④', title: '横どうしの赤と青で円', desc: '赤に寄るように円をつくります。5ブロック目は合同の円（1+2 ／ 3+2）。', f: f4 },
+  { no: '⑤', title: '4人組の小さな輪', desc: '4人組ごとの輪。5ブロック目は最後尾にもどります。', f: f5 },
+  { no: '⑥', title: '大きな円の中に2列', desc: '前後の並びはそのまま（前が低い子・うしろが高い子）。2組はうしろに寄るだけ。', f: f6 },
+  { no: '⑦', title: '赤は左の半円、青は右の半円', desc: '2列がひらいて、1つの円になります。', f: f7 },
+  { no: '退場', title: '退場（背の高い子を先頭に）', desc: '円の状態から、高い子から順に出ていきます。', f: fExit },
 ];
 const DATA = SCENES.map(s => s.f());
 
@@ -280,7 +317,7 @@ function drawRoute() {
   el('polyline', { points: pts.map(p => p.join(',')).join(' '), fill: 'none', stroke: COLOR[kids[focus].col], 'stroke-width': 2.5, 'stroke-opacity': .6, 'stroke-dasharray': '7 5' }, g);
   pts.forEach((p, i) => {
     el('circle', { cx: p[0], cy: p[1], r: 11, fill: '#fff', stroke: COLOR[kids[focus].col], 'stroke-width': 1.5, opacity: i === cur ? 0 : .9 }, g);
-    el('text', { x: p[0], y: p[1] + 4, 'font-size': 10, 'text-anchor': 'middle', fill: '#2b2a28' }, g).textContent = ['入', '1', '2', '3', '4', '5', '6', '退'][i];
+    el('text', { x: p[0], y: p[1] + 4, 'font-size': 10, 'text-anchor': 'middle', fill: '#2b2a28' }, g).textContent = ['入', '1', '2', '3', '4', '5', '6', '7', '退'][i];
   });
 }
 
